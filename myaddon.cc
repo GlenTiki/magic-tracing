@@ -1,5 +1,9 @@
 #include <nan.h>
+
 #include <iostream>
+#include <cstring>
+#include <string>
+#include "simple-tp.h"
 
 using namespace v8;
 
@@ -40,37 +44,23 @@ class MyWorker : public NanAsyncWorker {
   // so it is safe to use V8 again
   void HandleOKCallback () {
     NanScope();
-
     // NanCallback#Call() does a NanMakeCallback() for us
     callback->Call(0, NULL);
+    std::string msg = "Callback called after delay!";
+    tracepoint(nearform, async_delay, msg.c_str(), delay);
   }
 
  private:
   int delay;
 };
 
-NAN_METHOD(Print) {
-  NanScope();
-
-  std::cout<< *String::Utf8Value(args[0].As<String>()) << std::endl;
-
-  NanReturnUndefined();
-}
-
-
-NAN_METHOD(Length) {
-  NanScope();
-
-  int len = strlen(*String::Utf8Value(args[0].As<String>()));
-  Local<Number> v8len = NanNew(len);
-
-  NanReturnValue(v8len);
-}
-
 NAN_METHOD(DelayAsync) {
   NanScope();
 
   int delay = args[0].As<Number>()->IntegerValue();
+
+  std::string msg = "Callback to be called after delay!";
+  tracepoint(nearform, async_delay, msg.c_str(), delay);
 
   Local<Function> callback = args[1].As<Function>();
   NanCallback* nanCallback = new NanCallback(callback);
@@ -111,12 +101,13 @@ NAN_METHOD(Call) {
 
   callback->Call(Context::GetCurrent()->Global(), argc, argv);
 
+  std::string msg = "simple callback called!";
+  tracepoint(nearform, run_cb, msg.c_str());
+
   NanReturnUndefined();
 }
 
 void Init(Handle<Object> exports, Handle<Object> module) {
-  exports->Set(NanNew("print"), NanNew<FunctionTemplate>(Print)->GetFunction());
-  exports->Set(NanNew("length"), NanNew<FunctionTemplate>(Length)->GetFunction());
   exports->Set(NanNew("delaySync"), NanNew<FunctionTemplate>(DelaySync)->GetFunction());
   exports->Set(NanNew("delayAsync"), NanNew<FunctionTemplate>(DelayAsync)->GetFunction());
   exports->Set(NanNew("call"), NanNew<FunctionTemplate>(Call)->GetFunction());
